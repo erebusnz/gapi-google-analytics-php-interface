@@ -79,7 +79,7 @@ class gapi
     
     if(substr($response['code'],0,1) == '2')
     {
-      return simplexml_load_string($response['body']);
+      return $response['body'];
     }
     else 
     {
@@ -113,7 +113,7 @@ class gapi
     //HTTP 2xx
     if(substr($response['code'],0,1) == '2')
     {
-      return simplexml_load_string($response['body']);
+      return $response['body'];
     }
     else 
     {
