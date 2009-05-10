@@ -20,7 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
  * @author Stig Manning <stig@sdm.co.nz>
- * @version 0.1 beta
+ * @version 0.2 beta
  * 
  */
 
@@ -95,30 +95,124 @@ class gapi
    * $parameters should be in key => value format
    * 
    * @param String $report_id
-   * @param Array $parameters
+   * @param Array $dimensions Google Analytics dimensions e.g. array('browser')
+   * @param Array $metrics Google Analytics metrics e.g. array('pageviews')
+   * @param Array $sort_metric OPTIONAL: Dimension or dimensions to sort by
+   * @param String $start_date OPTIONAL: Start of reporting period
+   * @param String $end_date OPTIONAL: End of reporting period
+   * @param Int $start_index OPTIONAL: Start index of results
+   * @param Int $max_results OPTIONAL: Max results returned
    */
-  public function requestReportData($report_id, $parameters=null)
+  public function requestReportData($report_id, $dimensions, $metrics, $sort_metric=null, $start_date=null, $end_date=null, $start_index=1, $max_results=30)
   {
-    if(is_array($parameters))
+    $parameters = array('ids'=>'ga:' . $report_id);
+    
+    if(is_array($dimensions))
     {
-      $parameters['ids'] = 'ga:' . $report_id;
+      $dimensions_string = '';
+      foreach($dimensions as $dimesion)
+      {
+        $dimensions_string .= ',ga:' . $dimesion;
+      }
+      $parameters['dimensions'] = substr($dimensions_string,1);
     }
     else 
     {
-      $parameters = array('ids'=>'ga:' . $report_id);
+      $parameters['dimensions'] = 'ga:'.$dimensions;
     }
+
+    if(is_array($metrics))
+    {
+      $metrics_string = '';
+      foreach($metrics as $metric)
+      {
+        $metrics_string .= ',ga:' . $metric;
+      }
+      $parameters['metrics'] = substr($metrics_string,1);
+    }
+    else 
+    {
+      $parameters['metrics'] = 'ga:'.$metrics;
+    }
+    
+    if($sort_metric==null)
+    {
+      $parameters['sort'] = substr($metrics_string,1);
+    }
+    elseif(is_array($sort_metric))
+    {
+      $sort_metric_string = '';
+      
+      foreach($sort_metric as $sort_metric_value)
+      {
+        $sort_metric_string .= ',ga:' . $sort_metric_value;
+      }
+      
+      $parameters['sort'] = $sort_metric_string;
+    }
+    else 
+    {
+      $parameters['sort'] = $sort_metric;
+    }
+    
+    if($start_date==null)
+    {
+      $start_date=date('Y-m-d',strtotime('1 month ago'));
+    }
+    
+    $parameters['start-date'] = $start_date;
+    
+    if($end_date==null)
+    {
+      $end_date=date('Y-m-d');
+    }
+    
+    $parameters['end-date'] = $end_date;
     
     $response = $this->httpRequest(gapi::report_data_url, $parameters, null, $this->generateAuthHeader());
     
     //HTTP 2xx
     if(substr($response['code'],0,1) == '2')
     {
-      return $response['body'];
+      return $this->objectMapper($response['body']);
     }
     else 
     {
       throw new Exception('GAPI: Failed to request report data. Error: "' . $response['body'] . '"');
     }
+  }
+  
+  /**
+   * Object Mapper to convert the XML to array of useful PHP objects
+   *
+   * @param String $xml_string
+   * @return Array of gapiReportResult objects
+   */
+  protected function objectMapper($xml_string)
+  {
+    $xml = simplexml_load_string($xml_string);
+    
+    $results = array();
+    
+    foreach($xml->entry as $entry)
+    {
+      $metrics = array();
+      foreach($entry->children('http://schemas.google.com/analytics/2009')->metric as $metric)
+      {
+        $metrics[str_replace('ga:','',$metric->attributes()->name)] = strval($metric->attributes()->value);
+      }
+      
+      $dimensions = array();
+      foreach($entry->children('http://schemas.google.com/analytics/2009')->dimension as $dimension)
+      {
+        $dimensions[str_replace('ga:','',$dimension->attributes()->name)] = strval($dimension->attributes()->value);
+      }
+      
+      $gapi_result = new gapiReportResult($metrics,$dimensions);
+      $results[] = $gapi_result;
+    }
+    
+    return $results;
   }
   
   /**
@@ -206,4 +300,127 @@ class gapi
     
     return array('body'=>$response,'code'=>$code);
   }
+}
+
+/**
+ * Class gapiReportResult
+ * 
+ * Storage for individual gapi report results
+ *
+ */
+class gapiReportResult
+{
+  private $metrics = array();
+  private $dimensions = array();
+  
+  public function __construct($metrics,$dimesions)
+  {
+    $this->metrics = $metrics;
+    $this->dimensions = $dimesions;
+  }
+  
+  /**
+   * toString function to return the name of the result
+   * this is a concatented string of the dimesions chosen
+   * 
+   * For example:
+   * 'Firefox 3.0.10' from browser and browserVersion
+   *
+   * @return String
+   */
+  public function __toString()
+  {
+    if(is_array($this->dimensions))
+    {
+      return implode(' ',$this->dimensions);
+    }
+    else 
+    {
+      return '';
+    }
+  }
+  
+  /**
+   * Get an associative array of the dimesions
+   * and the matching values for the current result
+   *
+   * @return Array
+   */
+  public function getDimesions()
+  {
+    return $this->dimensions;
+  }
+  
+  /**
+   * Get an array of the metrics and the matchning
+   * values for the current result
+   *
+   * @return Array
+   */
+  public function getMetrics()
+  {
+    return $this->metrics;
+  }
+  
+  /**
+   * Call method to find a matching metric or dimension to return
+   *
+   * @param $name String name of function called
+   * @return String
+   * @throws Exception if not a valid metric or dimensions, or not a 'get' function
+   */
+  public function __call($name,$parameters)
+  {
+    if(!preg_match('/^get/',$name))
+    {
+      throw new Exception('No such function "' . $name . '"');
+    }
+    
+    $name = preg_replace('/^get/','',$name);
+    
+    $metric_key = $this->array_key_exists_nc($name,$this->metrics);
+    
+    if($metric_key)
+    {
+      return $this->metrics[$metric_key];
+    }
+    
+    $dimension_key = $this->array_key_exists_nc($name,$this->dimensions);
+    
+    if($dimension_key)
+    {
+      return $this->dimensions[$dimension_key];
+    }
+
+    throw new Exception('No valid metric or dimesion called "' . $name . '"');
+  }
+  
+  /**
+   * Case insensitive array_key_exists function, also returns
+   * matching key.
+   *
+   * @param String $key
+   * @param Array $search
+   * @return String Matching array key
+   */
+  private function array_key_exists_nc($key, $search)
+  {
+    if (array_key_exists($key, $search))
+    {
+      return $key;
+    }
+    if (!(is_string($key) && is_array($search)))
+    {
+      return false;
+    }
+    $key = strtolower($key);
+    foreach ($search as $k => $v)
+    {
+      if (strtolower($k) == $key)
+      {
+        return $k;
+      }
+    }
+    return false;
+  } 
 }
