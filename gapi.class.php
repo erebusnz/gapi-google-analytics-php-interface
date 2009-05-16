@@ -20,7 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
  * @author Stig Manning <stig@sdm.co.nz>
- * @version 0.2 beta
+ * @version 0.3 beta
  * 
  */
 
@@ -30,7 +30,9 @@ class gapi
   const account_data_url = 'https://www.google.com/analytics/feeds/accounts/default';
   const report_data_url = 'https://www.google.com/analytics/feeds/data';
   
-  const interface_name = 'GAPI-0.1beta';
+  const interface_name = 'GAPI-0.3beta';
+  
+  const http_interface = 'auto'; //'auto': autodetect, 'curl' or 'fopen'
   
   private $auth_token = null;
   
@@ -257,8 +259,6 @@ class gapi
   /**
    * Perform http request
    * 
-   * Currently using CURL, but should be upgraded to support
-   * other methods, like fopen with stream_context_create
    *
    * @todo Upgrade to support other request methods
    * @param Array $get_variables
@@ -266,6 +266,44 @@ class gapi
    * @param Array $headers
    */
   protected function httpRequest($url, $get_variables=null, $post_variables=null, $headers=null)
+  {
+    $interface = gapi::http_interface;
+    
+    if(gapi::http_interface =='auto')
+    {
+      if(function_exists('curl_exec'))
+      {
+        $interface = 'curl';
+      }
+      else 
+      {
+        $interface = 'fopen';
+      }
+    }
+    
+    if($interface == 'curl')
+    {
+      return $this->curlRequest($url, $get_variables, $post_variables, $headers);
+    }
+    elseif($interface == 'fopen') 
+    {
+      return $this->fopenRequest($url, $get_variables, $post_variables, $headers);
+    }
+    else 
+    {
+      throw new Exception('Invalid http interface defined. No such interface "' . gapi::http_interface . '"');
+    }
+  }
+  
+  /**
+   * HTTP request using PHP CURL functions
+   * Requires curl library installed and configured for PHP
+   * 
+   * @param Array $get_variables
+   * @param Array $post_variables
+   * @param Array $headers
+   */
+  private function curlRequest($url, $get_variables=null, $post_variables=null, $headers=null)
   {
     $ch = curl_init();
     
@@ -299,6 +337,56 @@ class gapi
     curl_close($ch);
     
     return array('body'=>$response,'code'=>$code);
+  }
+  
+  /**
+   * HTTP request using native PHP fopen function
+   * Requires PHP openSSL
+   *
+   * @param Array $get_variables
+   * @param Array $post_variables
+   * @param Array $headers
+   */
+  private function fopenRequest($url, $get_variables=null, $post_variables=null, $headers=null)
+  {
+    $http_options = array('method'=>'GET','timeout'=>3);
+    
+    if(!is_array($headers))
+    {
+      $headers = '';
+    }
+    else 
+    {
+      $headers = implode("\r\n",$headers) . "\r\n";
+    }
+    
+    if(is_array($get_variables))
+    {
+      $get_variables = '?' . str_replace('&amp;','&',urldecode(http_build_query($get_variables)));
+    }
+    else 
+    {
+      $get_variables = null;
+    }
+    
+    if(is_array($post_variables))
+    {
+      $post_variables = str_replace('&amp;','&',urldecode(http_build_query($post_variables)));
+      $http_options['method'] = 'POST';
+      $headers = "Content-type: application/x-www-form-urlencoded\r\n" . "Content-Length: " . strlen($post_variables) . "\r\n" . $headers;
+      $http_options['header'] = $headers;
+      $http_options['content'] = $post_variables;
+    }
+    else 
+    {
+      $post_variables = '';
+      $http_options['header'] = $headers;
+    }
+    
+    $context = stream_context_create(array('http'=>$http_options));
+    $response = @file_get_contents($url . $get_variables, null, $context);  
+    
+    return array('body'=>$response!==false?$response:'Request failed, fopen provides no further information','code'=>$response!==false?'200':'400');
   }
 }
 
