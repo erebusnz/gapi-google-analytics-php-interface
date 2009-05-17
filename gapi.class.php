@@ -173,6 +173,10 @@ class gapi
     
     $parameters['end-date'] = $end_date;
     
+    
+    $parameters['start-index'] = $start_index;
+    $parameters['max-results'] = $max_results;
+    
     $response = $this->httpRequest(gapi::report_data_url, $parameters, null, $this->generateAuthHeader());
     
     //HTTP 2xx
