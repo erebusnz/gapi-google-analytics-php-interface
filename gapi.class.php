@@ -20,7 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
  * @author Stig Manning <stig@sdm.co.nz>
- * @version 0.5 beta
+ * @version 1.0
  * 
  */
 
@@ -31,12 +31,14 @@ class gapi
   const client_login_url = 'https://www.google.com/accounts/ClientLogin';
   const account_data_url = 'https://www.google.com/analytics/feeds/accounts/default';
   const report_data_url = 'https://www.google.com/analytics/feeds/data';
-  const interface_name = 'GAPI-0.5beta';
+  const interface_name = 'GAPI-1.0';
   
   private $auth_token = null;
-  private $result_entries = array();
-  private $result_aggregate_metrics = array();
-  private $result_root_parameters = array();
+  private $account_entries = array();
+  private $account_root_parameters = array();
+  private $report_aggregate_metrics = array();
+  private $report_root_parameters = array();
+  private $results = array();
   
   /**
    * Constructor function for all new gapi instances
@@ -72,18 +74,17 @@ class gapi
   
   /**
    * Request account data from Google Analytics
-   * 
-   * $parameters should be in key => value format
    *
-   * @param Array $parameters
+   * @param Int $start_index OPTIONAL: Start index of results
+   * @param Int $max_results OPTIONAL: Max results returned
    */
-  public function requestAccountData($parameters=null)
+  public function requestAccountData($start_index=1, $max_results=20)
   {
-    $response = $this->httpRequest(gapi::account_data_url, $parameters, null, $this->generateAuthHeader());
+    $response = $this->httpRequest(gapi::account_data_url, array('start-index'=>$start_index,'max-results'=>$max_results), null, $this->generateAuthHeader());
     
     if(substr($response['code'],0,1) == '2')
     {
-      return $response['body'];
+      return $this->accountObjectMapper($response['body']);
     }
     else 
     {
@@ -182,7 +183,7 @@ class gapi
     //HTTP 2xx
     if(substr($response['code'],0,1) == '2')
     {
-      return $this->objectMapper($response['body']);
+      return $this->reportObjectMapper($response['body']);
     }
     else 
     {
@@ -190,49 +191,98 @@ class gapi
     }
   }
   
-  /**
-   * Object Mapper to convert the XML to array of useful PHP objects
-   *
-   * @param String $xml_string
-   * @return Array of gapiReportEntry objects
-   */
-  protected function objectMapper($xml_string)
-  {    
+  protected function accountObjectMapper($xml_string)
+  {
     $xml = simplexml_load_string($xml_string);
     
-    $results = array();
+    $this->results = null;
     
-    $result_root_parameters = array();
-    $result_aggregate_metrics = array();
+    $results = array();
+    $account_root_parameters = array();
     
     //Load root parameters
     
-    $result_root_parameters['updated'] = strval($xml->updated);
-    $result_root_parameters['generator'] = strval($xml->generator);
-    $result_root_parameters['generatorVersion'] = strval($xml->generator->attributes());
+    $account_root_parameters['updated'] = strval($xml->updated);
+    $account_root_parameters['generator'] = strval($xml->generator);
+    $account_root_parameters['generatorVersion'] = strval($xml->generator->attributes());
     
     $open_search_results = $xml->children('http://a9.com/-/spec/opensearchrss/1.0/');
     
     foreach($open_search_results as $key => $open_search_result)
     {
-      $result_root_parameters[$key] = intval($open_search_result);
+      $report_root_parameters[$key] = intval($open_search_result);
+    }
+    
+    $account_root_parameters['startDate'] = strval($google_results->startDate);
+    $account_root_parameters['endDate'] = strval($google_results->endDate);
+    
+    //Load result entries
+    
+    foreach($xml->entry as $entry)
+    {
+      $properties = array();
+      foreach($entry->children('http://schemas.google.com/analytics/2009')->property as $property)
+      {
+        $properties[str_replace('ga:','',$property->attributes()->name)] = strval($property->attributes()->value);
+      }
+      
+      $properties['title'] = strval($entry->title);
+      $properties['updated'] = strval($entry->updated);
+      
+      $results[] = new gapiAccountEntry($properties);
+    }
+    
+    $this->account_root_parameters = $account_root_parameters;
+    $this->results = $results;
+    
+    return $results;
+  }
+  
+  
+  /**
+   * Report Object Mapper to convert the XML to array of useful PHP objects
+   *
+   * @param String $xml_string
+   * @return Array of gapiReportEntry objects
+   */
+  protected function reportObjectMapper($xml_string)
+  {    
+    $xml = simplexml_load_string($xml_string);
+    
+    $this->results = null;
+    $results = array();
+    
+    $report_root_parameters = array();
+    $report_aggregate_metrics = array();
+    
+    //Load root parameters
+    
+    $report_root_parameters['updated'] = strval($xml->updated);
+    $report_root_parameters['generator'] = strval($xml->generator);
+    $report_root_parameters['generatorVersion'] = strval($xml->generator->attributes());
+    
+    $open_search_results = $xml->children('http://a9.com/-/spec/opensearchrss/1.0/');
+    
+    foreach($open_search_results as $key => $open_search_result)
+    {
+      $report_root_parameters[$key] = intval($open_search_result);
     }
     
     $google_results = $xml->children('http://schemas.google.com/analytics/2009');
 
     foreach($google_results->dataSource->property as $property_attributes)
     {
-      $result_root_parameters[str_replace('ga:','',$property_attributes->attributes()->name)] = strval($property_attributes->attributes()->value);
+      $report_root_parameters[str_replace('ga:','',$property_attributes->attributes()->name)] = strval($property_attributes->attributes()->value);
     }
     
-    $result_root_parameters['startDate'] = strval($google_results->startDate);
-    $result_root_parameters['endDate'] = strval($google_results->endDate);
+    $report_root_parameters['startDate'] = strval($google_results->startDate);
+    $report_root_parameters['endDate'] = strval($google_results->endDate);
     
     //Load result aggregate metrics
     
     foreach($google_results->aggregates->metric as $aggregate_metric)
     {
-      $result_aggregate_metrics[str_replace('ga:','',$aggregate_metric->attributes()->name)] = intval($aggregate_metric->attributes()->value);
+      $report_aggregate_metrics[str_replace('ga:','',$aggregate_metric->attributes()->name)] = intval($aggregate_metric->attributes()->value);
     }
     
     //Load result entries
@@ -251,13 +301,12 @@ class gapi
         $dimensions[str_replace('ga:','',$dimension->attributes()->name)] = strval($dimension->attributes()->value);
       }
       
-      $gapi_result = new gapiReportEntry($metrics,$dimensions);
-      $results[] = $gapi_result;
+      $results[] = new gapiReportEntry($metrics,$dimensions);
     }
     
-    $this->result_root_parameters = $result_root_parameters;
-    $this->result_aggregate_metrics = $result_aggregate_metrics;
-    $this->result_entries = $results;
+    $this->report_root_parameters = $report_root_parameters;
+    $this->report_aggregate_metrics = $report_aggregate_metrics;
+    $this->results = $results;
     
     return $results;
   }
@@ -469,7 +518,14 @@ class gapi
    */
   public function getResults()
   {
-    return $this->result_entries;
+    if(is_array($this->results))
+    {
+      return $this->results;
+    }
+    else 
+    {
+      return;
+    }
   }
   
   
@@ -481,7 +537,7 @@ class gapi
    */
   public function getMetrics()
   {
-    return $this->result_aggregate_metrics;
+    return $this->report_aggregate_metrics;
   }
   
   /**
@@ -502,24 +558,93 @@ class gapi
     
     $name = preg_replace('/^get/','',$name);
     
-    $parameter_key = gapi::array_key_exists_nc($name,$this->result_root_parameters);
+    $parameter_key = gapi::array_key_exists_nc($name,$this->report_root_parameters);
     
     if($parameter_key)
     {
-      return $this->result_root_parameters[$parameter_key];
+      return $this->report_root_parameters[$parameter_key];
     }
     
-    $aggregate_metric_key = gapi::array_key_exists_nc($name,$this->result_aggregate_metrics);
+    $aggregate_metric_key = gapi::array_key_exists_nc($name,$this->report_aggregate_metrics);
     
     if($aggregate_metric_key)
     {
-      return $this->result_aggregate_metrics[$aggregate_metric_key];
+      return $this->report_aggregate_metrics[$aggregate_metric_key];
     }
 
     throw new Exception('No valid root parameter or aggregate metric called "' . $name . '"');
   }
 }
 
+/**
+ * Class gapiAccountEntry
+ * 
+ * Storage for individual gapi account entries
+ *
+ */
+class gapiAccountEntry
+{
+  private $properties = array();
+  
+  public function __construct($properties)
+  {
+    $this->properties = $properties;
+  }
+  
+  /**
+   * toString function to return the name of the account
+   *
+   * @return String
+   */
+  public function __toString()
+  {
+    if(isset($this->properties['title']))
+    {
+      return $this->properties['title'];
+    }
+    else 
+    {
+      return;
+    }
+  }
+  
+  /**
+   * Get an associative array of the properties
+   * and the matching values for the current result
+   *
+   * @return Array
+   */
+  public function getProperties()
+  {
+    return $this->properties;
+  }
+  
+  /**
+   * Call method to find a matching parameter to return
+   *
+   * @param $name String name of function called
+   * @return String
+   * @throws Exception if not a valid parameter, or not a 'get' function
+   */
+  public function __call($name,$parameters)
+  {
+    if(!preg_match('/^get/',$name))
+    {
+      throw new Exception('No such function "' . $name . '"');
+    }
+    
+    $name = preg_replace('/^get/','',$name);
+    
+    $property_key = gapi::array_key_exists_nc($name,$this->properties);
+    
+    if($property_key)
+    {
+      return $this->properties[$property_key];
+    }
+    
+    throw new Exception('No valid property called "' . $name . '"');
+  }
+}
 
 /**
  * Class gapiReportEntry
