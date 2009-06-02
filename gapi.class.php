@@ -20,7 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
  * @author Stig Manning <stig@sdm.co.nz>
- * @version 1.0
+ * @version 1.1
  * 
  */
 
@@ -31,7 +31,8 @@ class gapi
   const client_login_url = 'https://www.google.com/accounts/ClientLogin';
   const account_data_url = 'https://www.google.com/analytics/feeds/accounts/default';
   const report_data_url = 'https://www.google.com/analytics/feeds/data';
-  const interface_name = 'GAPI-1.0';
+  const interface_name = 'GAPI-1.1';
+  const dev_mode = false;
   
   private $auth_token = null;
   private $account_entries = array();
@@ -102,7 +103,7 @@ class gapi
    * @param String $report_id
    * @param Array $dimensions Google Analytics dimensions e.g. array('browser')
    * @param Array $metrics Google Analytics metrics e.g. array('pageviews')
-   * @param Array $sort_metric OPTIONAL: Dimension or dimensions to sort by
+   * @param Array $sort_metric OPTIONAL: Dimension or dimensions to sort by e.g.('-visits')
    * @param String $start_date OPTIONAL: Start of reporting period
    * @param String $end_date OPTIONAL: End of reporting period
    * @param Int $start_index OPTIONAL: Start index of results
@@ -140,9 +141,9 @@ class gapi
       $parameters['metrics'] = 'ga:'.$metrics;
     }
     
-    if($sort_metric==null)
+    if($sort_metric==null&&isset($parameters['metrics']))
     {
-      $parameters['sort'] = substr($metrics_string,1);
+      $parameters['sort'] = $parameters['metrics'];
     }
     elseif(is_array($sort_metric))
     {
@@ -150,10 +151,18 @@ class gapi
       
       foreach($sort_metric as $sort_metric_value)
       {
-        $sort_metric_string .= ',ga:' . $sort_metric_value;
+        //Reverse sort - Thanks Nick Sullivan
+        if (substr($sort_metric_value, 0, 1) == "-")
+        {
+          $sort_metric_string .= ',-ga:' . substr($sort_metric_value, 1); // Descending
+        }
+        else
+        {
+          $sort_metric_string .= ',ga:' . $sort_metric_value; // Ascending
+        }
       }
       
-      $parameters['sort'] = $sort_metric_string;
+      $parameters['sort'] = substr($sort_metric_string, 1);
     }
     else 
     {
@@ -178,6 +187,8 @@ class gapi
     $parameters['start-index'] = $start_index;
     $parameters['max-results'] = $max_results;
     
+    $parameters['prettyprint'] = gapi::dev_mode ? 'true' : 'false';
+    
     $response = $this->httpRequest(gapi::report_data_url, $parameters, null, $this->generateAuthHeader());
     
     //HTTP 2xx
@@ -191,6 +202,12 @@ class gapi
     }
   }
   
+  /**
+   * Report Account Mapper to convert the XML to array of useful PHP objects
+   *
+   * @param String $xml_string
+   * @return Array of gapiAccountEntry objects
+   */
   protected function accountObjectMapper($xml_string)
   {
     $xml = simplexml_load_string($xml_string);
@@ -246,7 +263,7 @@ class gapi
    * @return Array of gapiReportEntry objects
    */
   protected function reportObjectMapper($xml_string)
-  {    
+  {
     $xml = simplexml_load_string($xml_string);
     
     $this->results = null;
