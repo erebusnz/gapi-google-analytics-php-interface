@@ -20,7 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
  * @author Stig Manning <stig@sdm.co.nz>
- * @version 1.1
+ * @version 1.2
  * 
  */
 
@@ -31,7 +31,7 @@ class gapi
   const client_login_url = 'https://www.google.com/accounts/ClientLogin';
   const account_data_url = 'https://www.google.com/analytics/feeds/accounts/default';
   const report_data_url = 'https://www.google.com/analytics/feeds/data';
-  const interface_name = 'GAPI-1.1';
+  const interface_name = 'GAPI-1.2';
   const dev_mode = false;
   
   private $auth_token = null;
