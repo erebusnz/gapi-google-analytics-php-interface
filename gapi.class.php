@@ -89,7 +89,7 @@ class gapi
     }
     else 
     {
-      throw new Exception('GAPI: Failed to request account data. Error: "' . $response['body'] . '"');
+      throw new Exception('GAPI: Failed to request account data. Error: "' . strip_tags($response['body']) . '"');
     }
   }
   
@@ -104,12 +104,13 @@ class gapi
    * @param Array $dimensions Google Analytics dimensions e.g. array('browser')
    * @param Array $metrics Google Analytics metrics e.g. array('pageviews')
    * @param Array $sort_metric OPTIONAL: Dimension or dimensions to sort by e.g.('-visits')
+   * @param String $filter OPTIONAL: Filter logic for filtering results
    * @param String $start_date OPTIONAL: Start of reporting period
    * @param String $end_date OPTIONAL: End of reporting period
    * @param Int $start_index OPTIONAL: Start index of results
    * @param Int $max_results OPTIONAL: Max results returned
    */
-  public function requestReportData($report_id, $dimensions, $metrics, $sort_metric=null, $start_date=null, $end_date=null, $start_index=1, $max_results=30)
+  public function requestReportData($report_id, $dimensions, $metrics, $sort_metric=null, $filter=null, $start_date=null, $end_date=null, $start_index=1, $max_results=30)
   {
     $parameters = array('ids'=>'ga:' . $report_id);
     
@@ -166,7 +167,23 @@ class gapi
     }
     else 
     {
-      $parameters['sort'] = $sort_metric;
+      if (substr($sort_metric, 0, 1) == "-")
+      {
+        $parameters['sort'] = '-ga:' . substr($sort_metric, 1);
+      }
+      else 
+      {
+        $parameters['sort'] = 'ga:' . $sort_metric;
+      }
+    }
+    
+    if($filter!=null)
+    {
+      $filter = $this->processFilter($filter);
+      if($filter!==false)
+      {
+        $parameters['filters'] = $filter;
+      }
     }
     
     if($start_date==null)
@@ -198,7 +215,34 @@ class gapi
     }
     else 
     {
-      throw new Exception('GAPI: Failed to request report data. Error: "' . $response['body'] . '"');
+      throw new Exception('GAPI: Failed to request report data. Error: "' . strip_tags($response['body']) . '"');
+    }
+  }
+
+  /**
+   * Process filter string, clean parameters and convert to Google Analytics
+   * compatible format
+   * 
+   * @param String $filter
+   * @return String Compatible filter string
+   */
+  protected function processFilter($filter)
+  {
+    $valid_operators = '(!~|=~|==|!=|>|<|>=|<=|=@|!@)';
+    
+    $filter = preg_replace('/\s\s+/',' ',trim($filter)); //Clean duplicate whitespace
+    $filter = str_replace(array(',',';','\\'),array('\,','\;','\\\\'),$filter); //Escape Google Analytics reserved characters
+    $filter = preg_replace('/(&&\s*|\|\|\s*|^)([a-z]+)(\s*' . $valid_operators . ')/i','$1ga:$2$3',$filter); //Prefix ga: to metrics and dimensions
+    $filter = preg_replace('/[\'\"]/i','',$filter); //Clear invalid quote characters
+    $filter = preg_replace(array('/\s*&&\s*/','/\s*\|\|\s*/','/\s*' . $valid_operators . '\s*/'),array(';',',','$1'),$filter); //Clean up operators
+    
+    if(strlen($filter)>0)
+    {
+      return urlencode($filter);
+    }
+    else 
+    {
+      return false;
     }
   }
   
@@ -351,7 +395,7 @@ class gapi
     
     if(substr($response['code'],0,1) != '2' || !is_array($auth_token) || empty($auth_token['Auth']))
     {
-      throw new Exception('GAPI: Failed to authenticate user. Error: "' . $response['body'] . '"');
+      throw new Exception('GAPI: Failed to authenticate user. Error: "' . strip_tags($response['body']) . '"');
     }
     
     $this->auth_token = $auth_token['Auth'];
