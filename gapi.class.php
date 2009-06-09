@@ -20,7 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
  * @author Stig Manning <stig@sdm.co.nz>
- * @version 1.2
+ * @version 1.3
  * 
  */
 
@@ -31,7 +31,7 @@ class gapi
   const client_login_url = 'https://www.google.com/accounts/ClientLogin';
   const account_data_url = 'https://www.google.com/analytics/feeds/accounts/default';
   const report_data_url = 'https://www.google.com/analytics/feeds/data';
-  const interface_name = 'GAPI-1.2';
+  const interface_name = 'GAPI-1.3';
   const dev_mode = false;
   
   private $auth_token = null;
@@ -353,7 +353,17 @@ class gapi
       $metrics = array();
       foreach($entry->children('http://schemas.google.com/analytics/2009')->metric as $metric)
       {
-        $metrics[str_replace('ga:','',$metric->attributes()->name)] = intval($metric->attributes()->value);
+        $metric_value = strval($metric->attributes()->value);
+        
+        //Check for float, or value with scientific notation
+        if(preg_match('/^(\d+\.\d+)|(\d+E\d+)|(\d+.\d+E\d+)$/',$metric_value))
+        {
+          $metrics[str_replace('ga:','',$metric->attributes()->name)] = floatval($metric_value);
+        }
+        else
+        {
+          $metrics[str_replace('ga:','',$metric->attributes()->name)] = intval($metric_value);
+        }
       }
       
       $dimensions = array();
