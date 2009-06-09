@@ -343,7 +343,17 @@ class gapi
     
     foreach($google_results->aggregates->metric as $aggregate_metric)
     {
-      $report_aggregate_metrics[str_replace('ga:','',$aggregate_metric->attributes()->name)] = intval($aggregate_metric->attributes()->value);
+      $metric_value = strval($aggregate_metric->attributes()->value);
+      
+      //Check for float, or value with scientific notation
+      if(preg_match('/^(\d+\.\d+)|(\d+E\d+)|(\d+.\d+E\d+)$/',$metric_value))
+      {
+        $report_aggregate_metrics[str_replace('ga:','',$aggregate_metric->attributes()->name)] = floatval($metric_value);
+      }
+      else
+      {
+        $report_aggregate_metrics[str_replace('ga:','',$aggregate_metric->attributes()->name)] = intval($metric_value);
+      }
     }
     
     //Load result entries
