@@ -110,7 +110,7 @@ class gapi
    * @param Int $start_index OPTIONAL: Start index of results
    * @param Int $max_results OPTIONAL: Max results returned
    */
-  public function requestReportData($report_id, $dimensions, $metrics, $sort_metric=null, $filter=null, $start_date=null, $end_date=null, $start_index=1, $max_results=30)
+  public function requestReportData($report_id, $dimensions=null, $metrics, $sort_metric=null, $filter=null, $start_date=null, $end_date=null, $start_index=1, $max_results=30)
   {
     $parameters = array('ids'=>'ga:' . $report_id);
     
@@ -123,7 +123,7 @@ class gapi
       }
       $parameters['dimensions'] = substr($dimensions_string,1);
     }
-    else 
+    elseif($dimensions!==null)
     {
       $parameters['dimensions'] = 'ga:'.$dimensions;
     }
