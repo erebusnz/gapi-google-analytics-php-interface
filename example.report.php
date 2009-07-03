@@ -5,7 +5,7 @@ define('ga_profile_id','your profile id');
 
 require 'gapi.class.php';
 
-$ga = new gapi(ga_email,ga_password);
+$ga = gapiClientLogin->authenticate(ga_email,ga_password);
 
 $ga->requestReportData(ga_profile_id,array('browser','browserVersion'),array('pageviews','visits'));
 ?>

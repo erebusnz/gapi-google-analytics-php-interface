@@ -5,7 +5,7 @@ define('ga_profile_id','your profile id');
 
 require 'gapi.class.php';
 
-$ga = new gapi(ga_email,ga_password);
+$ga = gapiClientLogin->authenticate(ga_email,ga_password);
 
 /**
  * Note: OR || operators are calculated first, before AND &&.
