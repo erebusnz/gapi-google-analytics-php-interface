@@ -833,7 +833,8 @@ class gapiUrl {
    * @param Array $get_variables
    */
   public function redirect($get_variables=null) {
-    return header('Location: ' . $this->getUrl($get_variables));
+    header('Location: ' . $this->getUrl($get_variables));
+    exit;
   }
 
   /**
