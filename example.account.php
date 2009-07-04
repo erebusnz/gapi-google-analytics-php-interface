@@ -4,7 +4,7 @@ define('ga_password','your password');
 
 require 'gapi.class.php';
 
-$ga = gapiClientLogin::authenticateUser(ga_email,ga_password);
+$ga = gapiClientLogin::authenticate(ga_email,ga_password);
 
 $ga->requestAccountData();
 

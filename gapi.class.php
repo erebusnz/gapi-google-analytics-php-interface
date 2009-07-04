@@ -1,4 +1,6 @@
 <?php
+// $Id: gapi.class.php,v 1.4 2009/06/19 01:48:19 jkitching Exp $
+
 /**
  * GAPI - Google Analytics PHP Interface
  * 
@@ -676,7 +678,7 @@ class gapiClientLogin extends gapiAuthMethod {
    * @param String $password
    * @return gapi
    */
-  public static function authenticateUser($email, $password) {
+  public static function authenticate($email, $password) {
     $auth_method = new gapiClientLogin();
     $auth_method->getToken($email, $password);
     return new gapi($auth_method);
@@ -788,7 +790,7 @@ class gapiAuthSub extends gapiAuthMethod {
    *
    * @return gapi
    */
-  public static function authenticateUser($return_url=null) {
+  public static function authenticate($return_url=null) {
     $auth_method = new gapiAuthSub();
     if (!isset($_GET['token']))
       $auth_method->performRequest();
