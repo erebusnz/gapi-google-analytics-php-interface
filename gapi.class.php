@@ -57,8 +57,8 @@ class gapi {
    *
    * @return String
    */
-  public function getAuthToken() {
-    return $this->auth_method->getAuthToken();
+  public function getToken() {
+    return $this->auth_method->getToken();
   }
 
   /**
@@ -414,6 +414,12 @@ class gapi {
 class gapiAccountEntry {
   private $properties = array();
 
+  /**
+   * Constructor function for all new gapiAccountEntry instances
+   * 
+   * @param Array $properties
+   * @return gapiAccountEntry
+   */
   public function __construct($properties) {
     $this->properties = $properties;
   }
@@ -472,6 +478,13 @@ class gapiReportEntry {
   private $metrics = array();
   private $dimensions = array();
 
+  /**
+   * Constructor function for all new gapiReportEntry instances
+   * 
+   * @param Array $metrics
+   * @param Array $dimensions
+   * @return gapiReportEntry
+   */
   public function __construct($metrics, $dimesions) {
     $this->metrics = $metrics;
     $this->dimensions = $dimesions;
@@ -514,7 +527,8 @@ class gapiReportEntry {
   /**
    * Call method to find a matching metric or dimension to return
    *
-   * @param $name String name of function called
+   * @param String $name name of function called
+   * @param Array $parameters
    * @return String
    * @throws Exception if not a valid metric or dimensions, or not a 'get' function
    */
@@ -553,6 +567,7 @@ abstract class gapiAuthMethod {
   /**
    * Constructs a new gapiAuthMethod class given an existing token
    *
+   * @param String $auth_token
    * @return gapiAuthMethod
    */
   public function __construct($auth_token=null) {
@@ -564,7 +579,7 @@ abstract class gapiAuthMethod {
    *
    * @return String
    */
-  public function getAuthToken() {
+  public function getToken() {
     return $this->auth_token;
   }
 
@@ -586,6 +601,7 @@ abstract class gapiAuthMethod {
    * gapi factory: return an instance of gapi seeded with the auth token method
    * (for use when one already has an authorization token string)
    *
+   * @param String $auth_token
    * @return gapi
    */
   public static function withToken($auth_token) {
@@ -596,6 +612,7 @@ abstract class gapiAuthMethod {
   /**
    * Generate authorization token header for all requests
    *
+   * @param String $token
    * @return Array
    */
   public function generateAuthHeader($token=null) {
@@ -607,6 +624,7 @@ abstract class gapiAuthMethod {
   /**
    * Parse the body of a returned key=value page
    *
+   * @param String $content
    * @return Array
    */
   protected function parseBody($content) {
@@ -632,7 +650,7 @@ class gapiClientLogin extends gapiAuthMethod {
    * @param String $password
    * @return gapiClientLogin
    */
-  protected function getToken($email, $password) {
+  protected function fetchToken($email, $password) {
     $post_variables = array(
       'accountType' => 'GOOGLE',
       'Email' => $email,
@@ -680,7 +698,7 @@ class gapiClientLogin extends gapiAuthMethod {
    */
   public static function authenticate($email, $password) {
     $auth_method = new gapiClientLogin();
-    $auth_method->getToken($email, $password);
+    $auth_method->fetchToken($email, $password);
     return new gapi($auth_method);
   }
 }
@@ -698,6 +716,11 @@ class gapiAuthSub extends gapiAuthMethod {
   const revoke_token_url = 'https://www.google.com/accounts/AuthSubRevokeToken';
   const token_info_url = 'https://www.google.com/accounts/AuthSubTokenInfo';
 
+  /**
+   * Construct the URL to which the user is redirected for logging into their Google account
+   *
+   * @param Boolean $return_url
+   */
   protected function getRequestUrl($return_url=null) {
     if ($return_url == null) {
       $return_url = gapiUrl::currentUrl();
@@ -714,12 +737,22 @@ class gapiAuthSub extends gapiAuthMethod {
       return $url->getUrl($get_variables);
   }
 
+  /**
+   * Redirect the user to the Google Accounts login page
+   *
+   * @param String $return_url
+   */
   public function performRequest($return_url=null) {
     $url = new gapiUrl($this->getRequestUrl($return_url));
     $url->redirect();
   }
 
-  public function getSessionToken() {
+  /**
+   * Using the token returned as a GET variable, fetch the session token
+   *
+   * @return String
+   */
+  public function fetchSessionToken() {
     $url = new gapiUrl(self::session_token_url);
     $response = $url->get(false, $this->generateAuthHeader($_GET['token']));
     $auth_token = $this->parseBody($response['body']);
@@ -732,6 +765,11 @@ class gapiAuthSub extends gapiAuthMethod {
     return $this->auth_token;
   }
 
+  /**
+   * Return token information as an associative array
+   *
+   * @return Array
+   */
   public function getTokenInfo() {
     $url = new gapiUrl(self::token_info_url);
     $response = $url->get(false, $this->generateAuthHeader($this->auth_token));
@@ -744,6 +782,9 @@ class gapiAuthSub extends gapiAuthMethod {
     return $info;
   }
 
+  /**
+   * Render the token invalid
+   */
   public function revokeToken() {
     $url = new gapiUrl(self::revoke_token_url);
     $response = $url->get(false, $this->generateAuthHeader($this->auth_token));
@@ -786,16 +827,27 @@ class gapiAuthSub extends gapiAuthMethod {
   }
 
   /**
+   * Check to see if a token has been sent back through $_GET variables
+   */
+  public static function checkToken() {
+    return self::authenticate(null, true);
+  }
+
+  /**
    * Authenticate and return a seeded gapi instance
    *
    * @return gapi
    */
-  public static function authenticate($return_url=null) {
+  public static function authenticate($return_url=null, $check_only=false) {
     $auth_method = new gapiAuthSub();
-    if (!isset($_GET['token']))
+    if (!isset($_GET['token'])) {
+      // no token and we only want to check for one, so return
+      if ($check_only)
+        return false;
       $auth_method->performRequest();
-    else
-      $auth_method->getSessionToken();
+    } else {
+      $auth_method->fetchSessionToken();
+    }
     return new gapi($auth_method);
   }
 }
@@ -821,6 +873,16 @@ class gapiUrl {
     }
     $url .= $_SERVER['REQUEST_URI'];
     return $url;
+  }
+
+  /**
+   * Get the current page url without GET variables
+   *
+   * @return String
+   */
+  public static function currentUrlWithoutGet() {
+    $url = self::currentUrl();
+    return substr($url, 0, strpos($url, '?'));
   }
 
   public function __construct($url) {
