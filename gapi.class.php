@@ -485,14 +485,14 @@ class gapiReportEntry {
    * @param Array $dimensions
    * @return gapiReportEntry
    */
-  public function __construct($metrics, $dimesions) {
+  public function __construct($metrics, $dimensions) {
     $this->metrics = $metrics;
-    $this->dimensions = $dimesions;
+    $this->dimensions = $dimensions;
   }
 
   /**
    * toString function to return the name of the result
-   * this is a concatented string of the dimesions chosen
+   * this is a concatented string of the dimensions chosen
    * 
    * For example:
    * 'Firefox 3.0.10' from browser and browserVersion
@@ -505,12 +505,12 @@ class gapiReportEntry {
   }
 
   /**
-   * Get an associative array of the dimesions
+   * Get an associative array of the dimensions
    * and the matching values for the current result
    *
    * @return Array
    */
-  public function getDimesions() {
+  public function getDimensions() {
     return $this->dimensions;
   }
 
