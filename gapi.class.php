@@ -172,7 +172,8 @@ class gapi {
     }
 
     if ($start_date==null) {
-      $start_date=date('Y-m-d', strtotime('1 month ago'));
+      // Use the day that Google Analytics was released (1 Jan 2005).
+      $start_date = '2005-01-01';
     }
 
     $parameters['start-date'] = $start_date;
