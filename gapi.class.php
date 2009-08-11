@@ -117,7 +117,7 @@ class gapi {
    * @param Int $start_index OPTIONAL: Start index of results
    * @param Int $max_results OPTIONAL: Max results returned
    */
-  public function requestReportData($report_id, $dimensions=null, $metrics, $sort_metric=null, $filter=null, $start_date=null, $end_date=null, $start_index=1, $max_results=30) {
+  public function requestReportData($report_id, $dimensions=null, $metrics, $sort_metric=null, $filter=null, $start_date=null, $end_date=null, $start_index=1, $max_results=10000) {
     $parameters = array('ids'=>'ga:' . $report_id);
 
     if (is_array($dimensions)) {
@@ -174,12 +174,18 @@ class gapi {
     if ($start_date==null) {
       // Use the day that Google Analytics was released (1 Jan 2005).
       $start_date = '2005-01-01';
+    } elseif (is_int($start_date)) {
+      // Perhaps we are receiving a Unix timestamp.
+      $start_date = date('Y-m-d', $start_date);
     }
 
     $parameters['start-date'] = $start_date;
 
     if ($end_date==null) {
-      $end_date=date('Y-m-d');
+      $end_date = date('Y-m-d');
+    } elseif (is_int($end_date)) {
+      // Perhaps we are receiving a Unix timestamp.
+      $end_date = date('Y-m-d', $end_date);
     }
 
     $parameters['end-date'] = $end_date;
