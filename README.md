@@ -1,6 +1,6 @@
 # GAPI now has OAuth2 support #
 
-**GAPI is now at version 2.1** - This version has full OAuth2 and V3 authentication support.
+**GAPI is now at version 2.0** - This version has full OAuth2 and V3 authentication support.
 
 Development is complete on the Google Analytics filter control. You can now filter your results using a simple GAPI filter string, for example:
 
