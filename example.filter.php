@@ -1,11 +1,8 @@
 <?php
-define('ga_email','youremail@email.com');
-define('ga_password','your password');
-define('ga_profile_id','your profile id');
-
 require 'gapi.class.php';
 
-$ga = gapiClientLogin->authenticate(ga_email,ga_password);
+$ga = gapiClientLogin::authenticate(ga_email,ga_password);
+$ga = new gapi("XXXXXXXX@developer.gserviceaccount.com", "key.p12");
 
 /**
  * Note: OR || operators are calculated first, before AND &&.
