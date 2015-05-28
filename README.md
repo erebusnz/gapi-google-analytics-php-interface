@@ -1,6 +1,6 @@
-# GAPI now has Google Analytics filter support #
+# GAPI now has OAuth2 support #
 
-**GAPI is now at version 1.3** - This version contains fixes for the handling of very large metric values represented in scientific notation. Thanks to austinrehab for raising this issue.
+**GAPI is now at version 2.1** - This version has full OAuth2 and V3 authentication support.
 
 Development is complete on the Google Analytics filter control. You can now filter your results using a simple GAPI filter string, for example:
 
@@ -10,7 +10,7 @@ $filter = 'country == United States && browser == Firefox || browser == Chrome';
 
 You can create simple query strings that represent the logic Google Analytics requires, but it is abstracted enough to be more readable and easier to work with.
 
-Download the latest [gapi.class.php](http://gapi-google-analytics-php-interface.googlecode.com/files/gapi-1.3.zip) and try out the filter control with the example.filter.php. Read more about the [GAPI Filter Control](http://code.google.com/p/gapi-google-analytics-php-interface/wiki/UsingFilterControl).
+Download the latest [gapi.class.php](https://github.com/erebusnz/gapi-google-analytics-php-interface) and try out the filter control with the example.filter.php. Read more about the [GAPI Filter Control](https://github.com/erebusnz/gapi-google-analytics-php-interface/blob/wiki/UsingFilterControl.md).
 
 ## Features: ##
 
@@ -30,7 +30,7 @@ You might be running symfony, zend framework, cakePHP and need a good object-ori
 ## Use is as simple as: ##
 
 ```
-$ga = new gapi('email@yourdomain.com','password');
+$ga = new gapi('XXXX@developer.gserviceaccount.com','oauthkeyfile.p12');
 
 $ga->requestReportData(145141242,array('browser','browserVersion'),array('pageviews','visits'));
 
@@ -50,7 +50,7 @@ This project was inspired by the use of Doctrine and Propel ORM interfaces for P
 
 With GAPI, when data is returned from Google it is automatically converted into a native PHP object, with an interface to allow the 'get' the value of any dimesion or metric.
 
-For example, if you request the metric 'uniquePageviews' and the dimesion 'pagePath' you can do the following:
+For example, if you request the metric 'uniquePageviews' and the dimension 'pagePath' you can do the following:
 
 ```
 foreach($ga->getResults() as $result)
