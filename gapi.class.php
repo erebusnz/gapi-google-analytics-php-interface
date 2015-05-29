@@ -41,7 +41,6 @@ class gapi {
 
   /**
    * Constructor function for new gapi instances
-  
    *
    * @param string $client_email Email of OAuth2 service account (XXXXX@developer.gserviceaccount.com)
    * @param string $key_file Location/filename of .p12 key file
