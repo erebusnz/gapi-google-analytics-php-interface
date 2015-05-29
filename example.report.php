@@ -1,7 +1,6 @@
 <?php
 require 'gapi.class.php';
 
-$ga = gapiClientLogin::authenticate(ga_email,ga_password);
 $ga = new gapi("XXXXXXXX@developer.gserviceaccount.com", "key.p12");
 
 $ga->requestReportData(ga_profile_id,array('browser','browserVersion'),array('pageviews','visits'));
