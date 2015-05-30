@@ -299,31 +299,31 @@ class gapi {
     }
 
     //Load result entries
+    if(isset($json['rows'])){
+      foreach($json['rows'] as $row) {
+        $metrics = array();
+        $dimensions = array();
+        foreach($json['columnHeaders'] as $index => $header) {
+          switch($header['columnType']) {
+            case 'METRIC':
+              $metric_value = $row[$index];
 
-    foreach($json['rows'] as $row) {
-      $metrics = array();
-      $dimensions = array();
-      foreach($json['columnHeaders'] as $index => $header) {
-        switch($header['columnType']) {
-          case 'METRIC':
-            $metric_value = $row[$index];
-
-            //Check for float, or value with scientific notation
-            if(preg_match('/^(\d+\.\d+)|(\d+E\d+)|(\d+.\d+E\d+)$/',$metric_value)) {
-              $metrics[str_replace('ga:', '', $header['name'])] = floatval($metric_value);
-            } else {
-              $metrics[str_replace('ga:', '', $header['name'])] = intval($metric_value);
-            }
-            break;
-          case 'DIMENSION':
-            $dimensions[str_replace('ga:', '', $header['name'])] = strval($row[$index]);
-            break;
-          default:
-            throw new Exception("GAPI: Unrecognized columnType '{$header['columnType']}' for columnHeader '{$header['name']}'");
+              //Check for float, or value with scientific notation
+              if(preg_match('/^(\d+\.\d+)|(\d+E\d+)|(\d+.\d+E\d+)$/',$metric_value)) {
+                $metrics[str_replace('ga:', '', $header['name'])] = floatval($metric_value);
+              } else {
+                $metrics[str_replace('ga:', '', $header['name'])] = intval($metric_value);
+              }
+              break;
+            case 'DIMENSION':
+              $dimensions[str_replace('ga:', '', $header['name'])] = strval($row[$index]);
+              break;
+            default:
+              throw new Exception("GAPI: Unrecognized columnType '{$header['columnType']}' for columnHeader '{$header['name']}'");
+          }
         }
+        $results[] = new gapiReportEntry($metrics, $dimensions);
       }
-
-      $results[] = new gapiReportEntry($metrics, $dimensions);
     }
 
     $this->report_root_parameters = $report_root_parameters;
