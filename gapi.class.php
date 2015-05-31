@@ -48,6 +48,9 @@ class gapi {
    * @return gapi
    */
   public function __construct($client_email, $key_file, $delegate_email = null) {
+    if (version_compare(PHP_VERSION, '5.3.0') < 0) {
+      throw new Exception('GAPI: PHP version ' . PHP_VERSION . ' is below minimum required 5.3.0.');
+    }
     $this->auth_method = new gapiOAuth2();
     $this->auth_method->fetchToken($client_email, $key_file, $delegate_email);
   }

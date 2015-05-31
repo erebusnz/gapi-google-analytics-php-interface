@@ -1,5 +1,6 @@
 <?php
 require 'gapi.class.php';
+define('ga_profile_id','your profile id');
 
 $ga = new gapi("XXXXXXXX@developer.gserviceaccount.com", "key.p12");
 
