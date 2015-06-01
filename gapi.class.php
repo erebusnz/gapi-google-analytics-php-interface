@@ -676,7 +676,7 @@ class gapiRequest {
    */
   public function getUrl($get_variables=null) {
     if (is_array($get_variables)) {
-      $get_variables = '?' . str_replace('&amp;', '&', urldecode(http_build_query($get_variables)));
+      $get_variables = '?' . str_replace('&amp;', '&', urldecode(http_build_query($get_variables, '', '&')));
     } else {
       $get_variables = null;
     }
@@ -743,7 +743,7 @@ class gapiRequest {
     $ch = curl_init();
 
     if (is_array($get_variables)) {
-      $get_variables = '?' . str_replace('&amp;', '&', urldecode(http_build_query($get_variables)));
+      $get_variables = '?' . str_replace('&amp;', '&', urldecode(http_build_query($get_variables, '', '&')));
     } else {
       $get_variables = null;
     }
@@ -754,7 +754,7 @@ class gapiRequest {
 
     if (is_array($post_variables)) {
       curl_setopt($ch, CURLOPT_POST, true);
-      curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_variables));
+      curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_variables, '', '&'));
     }
 
     if (is_array($headers)) {
@@ -792,14 +792,14 @@ class gapiRequest {
     }
 
     if (is_array($get_variables)) {
-      $get_variables = '?' . str_replace('&amp;', '&', urldecode(http_build_query($get_variables)));
+      $get_variables = '?' . str_replace('&amp;', '&', urldecode(http_build_query($get_variables, '', '&')));
     }
     else {
       $get_variables = null;
     }
 
     if (is_array($post_variables)) {
-      $post_variables = str_replace('&amp;', '&', urldecode(http_build_query($post_variables)));
+      $post_variables = str_replace('&amp;', '&', urldecode(http_build_query($post_variables, '', '&')));
       $http_options['method'] = 'POST';
       $headers = "Content-type: application/x-www-form-urlencoded\r\n" . "Content-Length: " . strlen($post_variables) . "\r\n" . $headers;
       $http_options['header'] = $headers;
