@@ -605,11 +605,21 @@ class gapiOAuth2 {
     }
 
     $data = $this->base64URLEncode(json_encode($header)) . '.' . $this->base64URLEncode(json_encode($claimset));
-    openssl_pkcs12_read(file_get_contents($key_file), $certs, 'notasecret');
+
+    if (!file_exists($key_file)) {
+      throw new Exception('GAPI: Failed load key file "' . $key_file . '". File could not be found.');
+    }
+
+    $key_data = file_get_contents($key_file);
     
-    if (!isset($certs['pkey']))
-    {
-      throw new Exception('GAPI: Failed load key file "' . $key_file . '". Check if correct p12 format.');
+    if (empty($key_data)) {
+      throw new Exception('GAPI: Failed load key file "' . $key_file . '". File could not be opened or is empty.');
+    }
+
+    openssl_pkcs12_read($key_data, $certs, 'notasecret');
+
+    if (!isset($certs['pkey'])) {
+      throw new Exception('GAPI: Failed load key file "' . $key_file . '". Unable to load pkcs12 check if correct p12 format.');
     }
 
     openssl_sign($data, $signature, openssl_pkey_get_private($certs['pkey']), "sha256");
