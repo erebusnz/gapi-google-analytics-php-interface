@@ -794,11 +794,11 @@ class gapiRequest {
   private function fopenRequest($get_variables=null, $post_variables=null, $headers=null) {
     $http_options = array('method'=>'GET', 'timeout'=>3);
 
+    $string_headers = '';
     if (is_array($headers)) {
-      $headers = implode("\r\n", $headers) . "\r\n";
-    }
-    else {
-      $headers = '';
+      foreach ($headers as $key => $value) {
+        $string_headers .= "$key: $value\r\n";
+      }
     }
 
     if (is_array($get_variables)) {
@@ -811,13 +811,13 @@ class gapiRequest {
     if (is_array($post_variables)) {
       $post_variables = str_replace('&amp;', '&', urldecode(http_build_query($post_variables, '', '&')));
       $http_options['method'] = 'POST';
-      $headers = "Content-type: application/x-www-form-urlencoded\r\n" . "Content-Length: " . strlen($post_variables) . "\r\n" . $headers;
-      $http_options['header'] = $headers;
+      $string_headers = "Content-type: application/x-www-form-urlencoded\r\n" . "Content-Length: " . strlen($post_variables) . "\r\n" . $string_headers;
+      $http_options['header'] = $string_headers;
       $http_options['content'] = $post_variables;
     }
     else {
       $post_variables = '';
-      $http_options['header'] = $headers;
+      $http_options['header'] = $string_headers;
     }
 
     $context = stream_context_create(array('http'=>$http_options));
