@@ -795,7 +795,10 @@ class gapiRequest {
     $http_options = array('method'=>'GET', 'timeout'=>3);
 
     if (is_array($headers)) {
-      $headers = implode("\r\n", $headers) . "\r\n";
+      foreach ($headers as $key => $value) {
+        $string_headers[] = "$key: $value";
+      }
+      $headers = implode("\r\n", $string_headers) . "\r\n";
     }
     else {
       $headers = '';
