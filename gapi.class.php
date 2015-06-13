@@ -34,7 +34,6 @@ class gapi {
 
   private $auth_method = null;
   private $account_entries = array();
-  private $account_root_parameters = array();
   private $report_aggregate_metrics = array();
   private $report_root_parameters = array();
   private $results = array();
@@ -222,7 +221,7 @@ class gapi {
 
     $filter = preg_replace('/\s\s+/', ' ', trim($filter)); //Clean duplicate whitespace
     $filter = str_replace(array(',', ';'), array('\,', '\;'), $filter); //Escape Google Analytics reserved characters
-    $filter = preg_replace('/(&&\s*|\|\|\s*|^)([a-z]+)(\s*' . $valid_operators . ')/i','$1ga:$2$3',$filter); //Prefix ga: to metrics and dimensions
+    $filter = preg_replace('/(&&\s*|\|\|\s*|^)([a-z0-9]+)(\s*' . $valid_operators . ')/i','$1ga:$2$3',$filter); //Prefix ga: to metrics and dimensions
     $filter = preg_replace('/[\'\"]/i', '', $filter); //Clear invalid quote characters
     $filter = preg_replace(array('/\s*&&\s*/','/\s*\|\|\s*/','/\s*' . $valid_operators . '\s*/'), array(';', ',', '$1'), $filter); //Clean up operators
 
@@ -245,16 +244,11 @@ class gapi {
     $results = array();
 
     foreach ($json['items'] as $item) {
-      $properties = array();
       foreach ($item['webProperties'] as $property) {
-        $properties[$property['name']] = $property;
+        $results[] = new gapiAccountEntry($property);
       }
-
-      $results[] = new gapiAccountEntry($properties);
     }
-    unset($json['items']);
 
-    $this->account_root_parameters = $json;
     $this->account_entries = $results;
 
     return $results;
@@ -337,7 +331,7 @@ class gapi {
   }
 
   /**
-   * Get Results
+   * Get current analytics results
    *
    * @return Array
    */
@@ -345,6 +339,14 @@ class gapi {
     return is_array($this->results) ? $this->results : false;
   }
 
+  /**
+   * Get current account data
+   *
+   * @return Array
+   */
+  public function getAccounts() {
+    return is_array($this->account_entries) ? $this->account_entries : false;
+  }
 
   /**
    * Get an array of the metrics and the matching
@@ -436,7 +438,7 @@ class gapiAccountEntry {
    */
   public function __toString() {
     return isset($this->properties['name']) ?
-      $this->properties['name']: false;
+      $this->properties['name']: '';
   }
 
   /**
@@ -823,6 +825,6 @@ class gapiRequest {
     $context = stream_context_create(array('http'=>$http_options));
     $response = @file_get_contents($this->url . $get_variables, null, $context);
 
-    return array('body'=>$response!==false?$response:'Request failed, fopen provides no further information', 'code'=>$response!==false?'200':'400');
+    return array('body'=>$response!==false?$response:'Request failed, consider using php5-curl module for more information.', 'code'=>$response!==false?'200':'400');
   }
 }

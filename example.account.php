@@ -5,7 +5,7 @@ $ga = new gapi("XXXXXXXX@developer.gserviceaccount.com", "key.p12");
 
 $ga->requestAccountData();
 
-foreach($ga->getResults() as $result)
+foreach($ga->getAccounts() as $result)
 {
-  echo $result . ' (' . $result->getProfileId() . ")<br />";
+  echo $result . ' (' . $result->getId() . ")<br />";
 }
