@@ -197,7 +197,7 @@ class gapi {
     $parameters['max-results'] = $max_results;
 
     $parameters['prettyprint'] = gapi::dev_mode ? 'true' : 'false';
-
+    
     $url = new gapiRequest(gapi::report_data_url);
     $response = $url->get($parameters, $this->auth_method->generateAuthHeader());
 
@@ -205,7 +205,24 @@ class gapi {
     if (substr($response['code'], 0, 1) == '2') {
       return $this->reportObjectMapper($response['body']);
     } else {
-      throw new Exception('GAPI: Failed to request report data. Error: "' . strip_tags($response['body']) . '"');
+      throw new Exception('GAPI: Failed to request report data. Error: "' . $this->cleanErrorResponse($response['body']) . '"');
+    }
+  }
+  
+  /**
+   * Clean error message from Google API
+   * 
+   * @param String $error Error message HTML or JSON from Google API
+   */
+  private function cleanErrorResponse($error) {
+    if (strpos($error, '<html') !== false) {
+      $error = preg_replace('/<(style|title|script)[^>]*>[^<]*<\/(style|title|script)>/i', '', $error);
+      return trim(preg_replace('/\s+/', ' ', strip_tags($error)));
+    }
+    else
+    {
+      $json = json_decode($error);
+      return isset($json->error->message) ? strval($json->error->message) : $error;
     }
   }
 
@@ -245,6 +262,9 @@ class gapi {
 
     foreach ($json['items'] as $item) {
       foreach ($item['webProperties'] as $property) {
+        if (isset($property['profiles'][0]['id'])) {
+          $property['ProfileId'] = $property['profiles'][0]['id'];
+        }
         $results[] = new gapiAccountEntry($property);
       }
     }
@@ -601,8 +621,7 @@ class gapiOAuth2 {
       "iat" => time(),
     );
 
-    if(!empty($delegate_email))
-    {
+    if(!empty($delegate_email)) {
       $claimset["sub"] = $delegate_email;
     }
 

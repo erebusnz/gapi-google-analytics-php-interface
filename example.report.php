@@ -38,8 +38,4 @@ endforeach
   <th>Total Visits</th>
   <td><?php echo $ga->getVisits() ?></td>
 </tr>
-<tr>
-  <th>Results Updated</th>
-  <td><?php echo $ga->getUpdated() ?></td>
-</tr>
 </table>

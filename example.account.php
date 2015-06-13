@@ -7,5 +7,5 @@ $ga->requestAccountData();
 
 foreach($ga->getAccounts() as $result)
 {
-  echo $result . ' (' . $result->getId() . ")<br />";
+  echo $result . ' ' . $result->getId() . ' (' . $result->getProfileId() . ")<br />";
 }
