@@ -609,7 +609,11 @@ class gapiOAuth2 {
     $data = $this->base64URLEncode(json_encode($header)) . '.' . $this->base64URLEncode(json_encode($claimset));
 
     if (!file_exists($key_file)) {
-      throw new Exception('GAPI: Failed load key file "' . $key_file . '". File could not be found.');
+      if ( !file_exists(__DIR__ . DIRECTORY_SEPARATOR . $key_file) ) {
+        throw new Exception('GAPI: Failed load key file "' . $key_file . '". File could not be found.');
+      } else {
+        $key_file = __DIR__ . DIRECTORY_SEPARATOR . $key_file;
+      }
     }
 
     $key_data = file_get_contents($key_file);
