@@ -53,7 +53,7 @@ endforeach
   <td><?php echo $ga->getVisits() ?></td>
 </tr>
 <tr>
-  <th>Results Updated</th>
-  <td><?php echo $ga->getUpdated() ?></td>
+  <th>Result Date Range</th>
+  <td><?php echo $ga->getStartDate() ?> to <?php echo $ga->getEndDate() ?></td>
 </tr>
 </table>
